@@ -1,20 +1,26 @@
 import Phaser from "phaser";
 
-export default class PreloadScene extends Phaser.Scene {
+export default class scene1 extends Phaser.Scene {
     private platforms?: Phaser.Physics.Arcade.StaticGroup;
     private player?: Phaser.Physics.Arcade.Sprite;
     private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
     private stars?: Phaser.Physics.Arcade.Group;
 
     private score = 0;
+    private starCount = 10;
+    private sceneText?: Phaser.GameObjects.Text;
     private scoreText?: Phaser.GameObjects.Text;
 
     private bombs?: Phaser.Physics.Arcade.Group;
 
     private gameOver = false;
 
+    private dataToPass = {
+        playerScore: this.score,
+    };
+
     constructor() {
-        super({ key: "PreloadScene" });
+        super({ key: "scene3" });
     }
 
     preload() {
@@ -28,10 +34,18 @@ export default class PreloadScene extends Phaser.Scene {
         });
     }
 
+    init(data: { playerScore: number }) {
+        console.log("Data received in Scene3:", data);
+        // Use the received data as needed
+        this.score = data.playerScore;
+    }
+
     create() {
         //this.scene.start("MainScene");
         this.add.image(400, 300, "sky");
 
+        // Platforms START
+        /*
         this.platforms = this.physics.add.staticGroup();
         const ground = this.platforms.create(
             400,
@@ -44,9 +58,12 @@ export default class PreloadScene extends Phaser.Scene {
         this.platforms.create(600, 400, "ground");
         this.platforms.create(50, 250, "ground");
         this.platforms.create(750, 220, "ground");
+        // Platforms END
+        */
 
+        // Player START
         this.player = this.physics.add.sprite(100, 450, "dude");
-        this.player.setBounce(0.2);
+        //this.player.setBounce(0.2);
         this.player.setCollideWorldBounds(true);
 
         this.anims.create({
@@ -75,23 +92,32 @@ export default class PreloadScene extends Phaser.Scene {
             repeat: -1,
         });
 
-        this.physics.add.collider(this.player, this.platforms);
+        //this.physics.add.collider(this.player, this.platforms);
+        // Player START
 
+        // Arrow Keys
         this.cursors = this.input.keyboard?.createCursorKeys();
 
+        // Star START
         this.stars = this.physics.add.group({
             key: "star",
-            repeat: 11,
+            repeat: this.starCount - 1,
             setXY: { x: 12, y: 0, stepX: 70 },
         });
 
         this.stars.children.iterate((c) => {
             const child = c as Phaser.Physics.Arcade.Image;
             child.setBounceY(Phaser.Math.FloatBetween(0.4, 0.8));
+            child.setCollideWorldBounds(true);
+            let posX = Phaser.Math.Between(0, this.sys.game.canvas.width);
+            let posY = Phaser.Math.Between(0, this.sys.game.canvas.height);
+            child.setX(posX);
+            child.setY(posY);
             return true;
         });
 
-        this.physics.add.collider(this.stars, this.platforms);
+        //this.physics.add.collider(this.stars, this.platforms);
+        // Star END
 
         this.physics.add.overlap(
             this.player,
@@ -101,13 +127,35 @@ export default class PreloadScene extends Phaser.Scene {
             this
         );
 
-        this.scoreText = this.add.text(16, 16, "score: 0", {
+        this.sceneText = this.add.text(16, 16, "Scene 3", {
             fontSize: "32px",
             color: "#000",
         });
 
-        this.bombs = this.physics.add.group();
-        this.physics.add.collider(this.bombs, this.platforms);
+        this.scoreText = this.add.text(16, 48, "Score: " + this.score, {
+            fontSize: "32px",
+            color: "#000",
+        });
+
+        this.bombs = this.physics.add.group({
+            key: "bomb",
+            repeat: this.starCount - 1,
+            setXY: { x: 12, y: 12 },
+        });
+
+        this.bombs.children.iterate((c) => {
+            const child = c as Phaser.Physics.Arcade.Image;
+            child.enableBody(true, child.x, 0, true, true);
+            let xVel = Phaser.Math.Between(-400, 400);
+            let yVel = Phaser.Math.Between(-400, 400);
+            child.setVelocityX(xVel);
+            child.setVelocityY(yVel);
+            child.setBounce(1);
+            child.setCollideWorldBounds(true);
+            return true;
+        });
+
+        //this.physics.add.collider(this.bombs, this.platforms);
         this.physics.add.collider(
             this.player,
             this.bombs,
@@ -118,10 +166,12 @@ export default class PreloadScene extends Phaser.Scene {
     }
 
     private handleHitBomb() {
-        this.physics.pause();
         this.player?.setTint(0xff0000);
         this.player?.anims.play("turn");
         this.gameOver = true;
+        this.dataToPass.playerScore = this.score;
+        this.scene.start("scene4", this.dataToPass);
+        // this.physics.pause();
     }
 
     private handleCollectStar(
@@ -144,9 +194,13 @@ export default class PreloadScene extends Phaser.Scene {
             this.stars.children.iterate((c) => {
                 const child = c as Phaser.Physics.Arcade.Image;
                 child.enableBody(true, child.x, 0, true, true);
+                let posX = Phaser.Math.Between(0, this.sys.game.canvas.width);
+                let posY = Phaser.Math.Between(0, this.sys.game.canvas.height);
+                child.setX(posX);
+                child.setY(posY);
                 return true;
             });
-
+            /*
             if (this.player) {
                 const x =
                     this.player.x < 400
@@ -160,8 +214,9 @@ export default class PreloadScene extends Phaser.Scene {
                 );
                 bomb.setBounce(1);
                 bomb.setCollideWorldBounds(true);
-                bomb.setVelocity(Phaser.Math.Between(-200, 200), 20);
+                bomb.setVelocity(Phaser.Math.Between(-400, 400), 20);
             }
+            */
         }
     }
 
@@ -171,18 +226,32 @@ export default class PreloadScene extends Phaser.Scene {
         }
 
         if (this.cursors.left.isDown) {
-            this.player?.setVelocityX(-160);
+            this.player?.setVelocityX(-400);
+            this.player?.setVelocityY(0);
             this.player?.anims.play("left", true);
         } else if (this.cursors.right.isDown) {
-            this.player?.setVelocityX(160);
+            this.player?.setVelocityX(400);
+            this.player?.setVelocityY(0);
             this.player?.anims.play("right", true);
-        } else {
+        } else if (this.cursors.down.isDown) {
+            this.player?.setVelocityY(400);
+            this.player?.setVelocityX(0);
+            this.player?.anims.play("turn", true);
+        } else if (this.cursors.up.isDown) {
+            this.player?.setVelocityY(-400);
             this.player?.setVelocityX(0);
             this.player?.anims.play("turn", true);
         }
 
+        /*else {
+            this.player?.setVelocityX(0);
+            this.player?.anims.play("turn", true);
+        }*/
+
+        /*
         if (this.cursors.up.isDown && this.player?.body?.touching.down) {
             this.player.setVelocityY(-330);
         }
+        */
     }
 }
